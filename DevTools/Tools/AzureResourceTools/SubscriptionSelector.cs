@@ -1,4 +1,5 @@
 ﻿using DevTools.Services.Azure;
+using DevTools.Services.Azure.Models;
 using Spectre.Console;
 
 namespace DevTools.Tools.AzureResourceTools;
@@ -17,19 +18,18 @@ public static class SubscriptionSelector
         var subscriptions = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync<List<SubscriptionSimplified>>(
                 $"Retrieving subscriptions in tenant {DevToolsContext.SelectedTenant?.DisplayName}",
-                (context) => resourceManagerService.GetSubscriptions());
+                (_) => resourceManagerService.GetSubscriptions());
         
         var subscription = AnsiConsole.Prompt(new SelectionPrompt<SubscriptionSimplified>()
             .Title("Select a subscription")
             .PageSize(10)
             .UseConverter(t => $"{t.DisplayName} - {t.SubscriptionId}")
             .AddChoices(subscriptions));
-
         
         await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync(
-                $"Setting subscription ${subscription?.DisplayName}",
-                (context) => AzureCliService.SetSubscription(subscription!.SubscriptionId));
+                $"Setting subscription ${subscription.DisplayName}",
+                (_) => AzureCliService.SetSubscription(subscription.SubscriptionId));
         
         DevToolsContext.SelectedSubscription = subscription;
     }
@@ -42,7 +42,7 @@ public static class SubscriptionSelector
         }
         
         var subscriptionInfo = tree.AddNode("[bold yellow]Subscription[/]");
-        var panel = new Panel($"[italic green]{DevToolsContext.SelectedSubscription?.DisplayName} - {DevToolsContext.SelectedSubscription?.SubscriptionId}[/]");
+        var panel = new Panel($"[italic green]{DevToolsContext.SelectedSubscription.DisplayName} - {DevToolsContext.SelectedSubscription.SubscriptionId}[/]");
         
         subscriptionInfo.AddNode(panel);
         

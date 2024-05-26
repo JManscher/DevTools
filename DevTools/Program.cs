@@ -14,29 +14,25 @@ var tools = new List<string>
 
 while (true)
 {
-    AnsiConsole.Clear();
-    AnsiConsole.Write(new FigletText("DevTools").Justify(Justify.Center).Color(Color.Green));
-
+    DevToolsContext.TreeContext().RenderHeader();
+    
     if (DevToolsContext.SelectedTenant is null)
     {
         await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync(
                 $"Initializing context",
-                (context) => AzureCliService.InitializeContext());
+                (_) => AzureCliService.InitializeContext());
     }
     
     if(DevToolsContext.SelectedSubscription is null)
     {
         await SubscriptionSelector.Run();
     }
-
-    AnsiConsole.Write(
-        DevToolsContext.RenderContext()
-            .AddTenantToContext()
-            .AddSubscriptionToContext());
+    
+    DevToolsContext.TreeContext().RenderHeader();
     
     var tool = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("Select a tool").PageSize(10).AddChoices(tools));
-
+    
     switch (tool)
     {
         case "Tenant Selector":
@@ -46,7 +42,7 @@ while (true)
             await SubscriptionSelector.Run();
             break;
         case "Bicep Explorer":
-            await BicepExplorer.Run();
+            await new BicepExplorer().Run();
             break;
     }
 }

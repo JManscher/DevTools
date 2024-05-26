@@ -5,6 +5,7 @@ using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.ResourceGraph;
 using Azure.ResourceManager.ResourceGraph.Models;
+using DevTools.Services.Azure.Models;
 
 namespace DevTools.Services.Azure;
 
@@ -47,11 +48,11 @@ public class AzureResourceManagerService
         return subscriptions;
     }
 
-    public async Task<List<ContainerRegistryQuery>> GetContainerRegistries()
+    public async Task<List<ContainerRegistryQueryResult>> GetContainerRegistries()
     {
         var tenantResource = Client.GetTenants().First(t => t.Data.TenantId == DevToolsContext.SelectedTenant?.TenantId);
         var containerRegistries = await tenantResource.GetResourcesAsync( new ResourceQueryContent(ContainerRegistryQuery));
-        return await containerRegistries.Value.Data.ToObjectAsync<List<ContainerRegistryQuery>>(new JsonObjectSerializer(new JsonSerializerOptions
+        return await containerRegistries.Value.Data.ToObjectAsync<List<ContainerRegistryQueryResult>>(new JsonObjectSerializer(new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
                 
@@ -59,10 +60,3 @@ public class AzureResourceManagerService
             CancellationToken.None) ?? [];
     }
 }
-
-public record ContainerRegistryQuery(string Id, string Name, string Type, string TenantId, string ResourceGroup, string LoginServer);
-
-public record TenantSimplified(string DisplayName, Guid? TenantId);
-
-public record SubscriptionSimplified(string DisplayName, string SubscriptionId);
-

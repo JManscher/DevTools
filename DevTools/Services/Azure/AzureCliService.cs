@@ -1,13 +1,14 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
+using DevTools.Services.Azure.Models;
 
 namespace DevTools.Services.Azure;
 
 public static class AzureCliService
 {
-    private static string? _azureCliPath = null;
-    
-    public static async Task Login()
+    private static string? _azureCliPath;
+
+    private static async Task Login()
     {
         await RunAzureCliCommand("login");
     }
@@ -87,21 +88,3 @@ public static class AzureCliService
     }
     
 }
-
-public record AzCliSubscription(
-    string EnvironmentName,
-    string HomeTenantId,
-    string Id,
-    bool IsDefault,
-    object[] ManagedByTenants,
-    string Name,
-    string State,
-    string TenantDisplayName,
-    Guid TenantId,
-    User User
-);
-
-public record User(
-    string Name,
-    string Type
-);

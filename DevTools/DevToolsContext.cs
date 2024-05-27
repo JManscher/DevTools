@@ -11,9 +11,7 @@ public static class DevToolsContext
     
     public static Tree TreeContext()
     {
-        var contextPanel = new Panel("[bold]Current Context[/]");
-        contextPanel.Border = BoxBorder.Rounded;
-        var root = new Tree(contextPanel);
+        var root = new Tree("[bold]Current Context[/]");
         return root.AddTenantToContext().AddSubscriptionToContext();
     }
     
@@ -21,6 +19,11 @@ public static class DevToolsContext
     {
         AnsiConsole.Clear();
         AnsiConsole.Write(new FigletText("DevTools").Justify(Justify.Center).Color(Color.Green));
-        AnsiConsole.Write(tree);
+
+        var contextPanel = new Panel(tree);
+
+        contextPanel.Border = BoxBorder.Rounded;
+
+        AnsiConsole.Write(contextPanel);
     }
 }

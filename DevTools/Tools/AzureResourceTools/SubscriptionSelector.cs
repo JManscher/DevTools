@@ -28,7 +28,7 @@ public static class SubscriptionSelector
         
         await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync(
-                $"Setting subscription ${subscription.DisplayName}",
+                $"Setting subscription {subscription.DisplayName}",
                 (_) => AzureCliService.SetSubscription(subscription.SubscriptionId));
         
         DevToolsContext.SelectedSubscription = subscription;

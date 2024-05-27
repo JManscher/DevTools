@@ -19,7 +19,7 @@ public class ContainerRegistryService
         var endpoint = new Uri($"https://{containerRegistryUri.LoginServer}");      
         _client = new ContainerRegistryClient(
             endpoint,
-            new DefaultAzureCredential(),
+            new AzureCliCredential(),
             new ContainerRegistryClientOptions()
             {
                 Audience = ContainerRegistryAudience.AzureResourceManagerPublicCloud

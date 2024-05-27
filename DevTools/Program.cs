@@ -1,4 +1,5 @@
-﻿using DevTools;
+﻿using Azure.Identity;
+using DevTools;
 using DevTools.Services.Azure;
 using DevTools.Tools.AzureResourceTools;
 using DevTools.Tools.BicepExplorer;
@@ -32,17 +33,30 @@ while (true)
     DevToolsContext.TreeContext().RenderHeader();
     
     var tool = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("Select a tool").PageSize(10).AddChoices(tools));
-    
-    switch (tool)
+    try
     {
-        case "Tenant Selector":
-            await TenantSelector.Run();
-            break;
-        case "Subscription Selector":
-            await SubscriptionSelector.Run();
-            break;
-        case "Bicep Explorer":
-            await new BicepExplorer().Run();
-            break;
+        switch (tool)
+        {
+            case "Tenant Selector":
+                await TenantSelector.Run();
+                break;
+            case "Subscription Selector":
+                await SubscriptionSelector.Run();
+                break;
+            case "Bicep Explorer":
+                await new BicepExplorer().Run();
+                break;
+        }
+    }
+    catch (CredentialUnavailableException ce)
+    {
+        AnsiConsole.Markup($"[bold red]Failed to retrieve token for {DevToolsContext.SelectedTenant?.TenantId}[/]");
+        AnsiConsole.Markup($"""[bold red]Please run "az login --tenant {DevToolsContext.SelectedTenant?.TenantId} [/]""");
+        AnsiConsole.WriteException(ce);
+        return;
+    }
+    catch (Exception e)
+    {
+        AnsiConsole.WriteException(e);
     }
 }

@@ -1,4 +1,5 @@
-﻿using Azure.Identity;
+﻿global using static DevTools.DevToolsContext;
+using Azure.Identity;
 using DevTools;
 using DevTools.Services.Azure;
 using DevTools.Tools.AzureResourceTools;
@@ -10,28 +11,28 @@ var tools = new List<string>
     "Tenant Selector",
     "Subscription Selector",
     "Bicep Explorer",
+    "Resource Explorer"
 };
-
 
 while (true)
 {
-    DevToolsContext.TreeContext().RenderHeader();
-    
-    if (DevToolsContext.SelectedTenant is null)
+    TreeContext().RenderHeader();
+
+    if (SelectedTenant is null)
     {
         await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync(
                 $"Initializing context",
                 (_) => AzureCliService.InitializeContext());
     }
-    
-    if(DevToolsContext.SelectedSubscription is null)
+
+    if (SelectedSubscription is null)
     {
         await SubscriptionSelector.Run();
     }
-    
-    DevToolsContext.TreeContext().RenderHeader();
-    
+
+    TreeContext().RenderHeader();
+
     var tool = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("Select a tool").PageSize(10).AddChoices(tools));
     try
     {
@@ -46,12 +47,15 @@ while (true)
             case "Bicep Explorer":
                 await new BicepExplorer().Run();
                 break;
+            case "Resource Explorer":
+                await new ResourceExplorer().Run();
+                break;
         }
     }
     catch (CredentialUnavailableException ce)
     {
-        AnsiConsole.Markup($"[bold red]Failed to retrieve token for {DevToolsContext.SelectedTenant?.TenantId}[/]");
-        AnsiConsole.Markup($"""[bold red]Please run "az login --tenant {DevToolsContext.SelectedTenant?.TenantId} [/]""");
+        AnsiConsole.Markup($"[bold red]Failed to retrieve token for {SelectedTenant?.TenantId}[/]");
+        AnsiConsole.Markup($"""[bold red]Please run "az login --tenant {SelectedTenant?.TenantId} [/]""");
         AnsiConsole.WriteException(ce);
         return;
     }

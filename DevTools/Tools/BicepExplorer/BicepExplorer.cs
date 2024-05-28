@@ -9,6 +9,7 @@ namespace DevTools.Tools.BicepExplorer;
 
 public class BicepExplorer
 {
+    private AzureResourceManagerService _resourceManagerService = new();
     private ContainerRegistryQueryResult? _selectedRegistry;
     private string? _selectedRepository;
     private Tag? _selectedTag;
@@ -17,31 +18,31 @@ public class BicepExplorer
     private static readonly Style HeaderStyle = new Style(foreground: Color.Yellow);
     private static readonly Style ValueStyle = new Style(foreground: Color.Green);
     private bool _exit;
-    
+
     public async Task Run()
     {
         while (true)
         {
-            if(_exit)
+            if (_exit)
             {
                 break;
             }
-            
+
             RenderHeader();
-            
-            if(_selectedRegistry is null)
+
+            if (_selectedRegistry is null)
             {
                 await SelectRegistry();
                 continue;
             }
-            
-            if(_selectedRepository is null && _containerRegistryService is not null)
+
+            if (_selectedRepository is null && _containerRegistryService is not null)
             {
                 await SelectRepository();
                 continue;
             }
-            
-            if(_selectedTag is null && _selectedRepository is not null && _containerRegistryService is not null)
+
+            if (_selectedTag is null && _selectedRepository is not null && _containerRegistryService is not null)
             {
                 await SelectTag();
                 continue;
@@ -60,13 +61,13 @@ public class BicepExplorer
     {
         var bicep = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync<JsonObject>($"Retrieving bicep definition", (_) => _containerRegistryService!.GetBicep(_selectedRepository!, _selectedTag!));
-        
+
         var json = new JsonText(bicep["parameters"]?.ToJsonString()!);
 
         while (true)
         {
             RenderHeader();
-            
+
             AnsiConsole.Write(
                 new Panel(json)
                     .Header("Parameters")
@@ -76,31 +77,32 @@ public class BicepExplorer
 
             AnsiConsole.WriteLine("Press Enter to go back.");
             var key = await AnsiConsole.Console.Input.ReadKeyAsync(true, CancellationToken.None);
-            
+
             if (key.GetValueOrDefault().Key == ConsoleKey.Enter)
             {
                 _selectedTag = null;
                 return;
             }
         }
-        
+
 
 
     }
 
     private async Task SelectTag()
     {
-        
+
         var tags = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
             .StartAsync<List<Tag>>($"Retrieving tags", (_) => _containerRegistryService!.GetTagsAsync(_selectedRepository!));
 
         var choices = tags.Select(t => t.Name).Prepend(GoBack).ToList();
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("Select a tag").PageSize(10).AddChoices(choices));
-        
-        if(choice == GoBack)
+
+        if (choice == GoBack)
         {
             _selectedRepository = null;
-        } else
+        }
+        else
         {
             _selectedTag = tags.First(t => t.Name == choice);
         }
@@ -113,11 +115,12 @@ public class BicepExplorer
 
         var choices = repositories.Prepend(GoBack).ToList();
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("Select a repository").PageSize(10).AddChoices(choices));
-        
-        if(choice == GoBack)
+
+        if (choice == GoBack)
         {
             _selectedRegistry = null;
-        } else
+        }
+        else
         {
             _selectedRepository = choice;
         }
@@ -125,13 +128,12 @@ public class BicepExplorer
 
     private async Task SelectRegistry()
     {
-        var resourceManagerService = AzureResourceManagerService.Instance;
-        
+
         var containerRegistries = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-            .StartAsync<List<ContainerRegistryQueryResult>>($"Retrieving container registries", (_) => resourceManagerService.GetContainerRegistries());
+            .StartAsync<List<ContainerRegistryQueryResult>>($"Retrieving container registries", (_) => _resourceManagerService.GetContainerRegistries());
 
         var choices = containerRegistries.Select(c => $"{c.Name} - {c.LoginServer}").Prepend(GoBack);
-       
+
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Select a container registry")
             .PageSize(10)
@@ -142,18 +144,18 @@ public class BicepExplorer
             _exit = true;
             return;
         }
-        
+
         _selectedRegistry = containerRegistries.First(c => $"{c.Name} - {c.LoginServer}" == choice);
-       
-       _containerRegistryService = new ContainerRegistryService(_selectedRegistry!);
+
+        _containerRegistryService = new ContainerRegistryService(_selectedRegistry!);
 
     }
 
     private void RenderHeader()
     {
-        AddBicepExplorerToContext(DevToolsContext.TreeContext()).RenderHeader();
+        AddBicepExplorerToContext(TreeContext()).RenderHeader();
     }
-    
+
     private Tree AddBicepExplorerToContext(Tree tree)
     {
         var bicepExplorerInfo = tree.AddNode("[bold yellow]Bicep Explorer[/]");
@@ -162,7 +164,7 @@ public class BicepExplorer
         grid.AddColumn(new GridColumn().NoWrap());
         grid.AddColumn(new GridColumn().NoWrap());
         grid.AddColumn(new GridColumn().NoWrap());
-        
+
         IRenderable[] headers =
         [
             new Text("Registry", HeaderStyle),
@@ -171,21 +173,21 @@ public class BicepExplorer
         ];
 
         grid.AddRow(headers);
-        
+
         IRenderable[] values =
         [
             new Text(_selectedRegistry?.Name ?? "Not selected", ValueStyle),
             new Text(_selectedRepository ?? "Not selected", ValueStyle),
             new Text(_selectedTag?.Name ?? "Not selected", ValueStyle)
         ];
-        
+
         grid.AddRow(values);
 
         var toolPanel = new Panel(grid);
         toolPanel.Border = BoxBorder.Heavy;
-        
+
         bicepExplorerInfo.AddNode(toolPanel);
-        
+
         return tree;
     }
 

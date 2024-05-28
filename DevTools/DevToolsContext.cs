@@ -20,9 +20,10 @@ public static class DevToolsContext
         AnsiConsole.Clear();
         AnsiConsole.Write(new FigletText("DevTools").Justify(Justify.Center).Color(Color.Green));
 
-        var contextPanel = new Panel(tree);
-
-        contextPanel.Border = BoxBorder.Rounded;
+        var contextPanel = new Panel(tree)
+        {
+            Border = BoxBorder.Rounded
+        };
 
         AnsiConsole.Write(contextPanel);
     }

@@ -1,11 +1,13 @@
-﻿using System.Text.Json;
-using Azure;
+﻿using Azure;
 using Azure.Core.Serialization;
 using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.ResourceGraph;
 using Azure.ResourceManager.ResourceGraph.Models;
+using DevTools.Models;
 using DevTools.Services.Azure.Models;
+using Spectre.Console;
+using Spectre.Console.Json;
 
 namespace DevTools.Services.Azure;
 
@@ -47,6 +49,19 @@ public class AzureResourceManagerService
         return subscriptions;
     }
 
+    public async Task<List<ResourcesQueryResult>> GetResourcesInResourceGroup(string resourceGroupName)
+    {
+        var tenantResource = _client.GetTenants().First(t => t.Data.TenantId == SelectedTenant?.TenantId);
+        var resources = await tenantResource.GetResourcesAsync(new ResourceQueryContent(
+            $"""
+            resources
+            | where resourceGroup == '{resourceGroupName}'
+            """
+        ));
+        return await resources.Value.Data.ToObjectAsync<List<ResourcesQueryResult>>(new JsonObjectSerializer(Defaults.JsonSerializerOptions),
+            CancellationToken.None) ?? [];
+    }
+
     public async Task<List<ResourceGroupQueryResult>> GetResourceGroups()
     {
         var tenantResource = _client.GetTenants().First(t => t.Data.TenantId == SelectedTenant?.TenantId);
@@ -58,14 +73,8 @@ public class AzureResourceManagerService
             | distinct(Name)
             """
         ));
-
         return await resourceGroups.Value.Data.ToObjectAsync<List<ResourceGroupQueryResult>>(new JsonObjectSerializer(Defaults.JsonSerializerOptions),
             CancellationToken.None) ?? [];
-
-
-        // var sub = await tenantResource.GetSubscriptionAsync(SelectedSubscription?.SubscriptionId);
-        // var resourceGroups = sub.Value.GetResourceGroups();
-        // return resourceGroups.Select(r => new ResourceGroupQueryResult(r.Id.ToString(), r.Data.Name)).ToList();
     }
 
     public async Task<List<ContainerRegistryQueryResult>> GetContainerRegistries()

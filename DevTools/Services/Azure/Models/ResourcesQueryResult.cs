@@ -7,6 +7,7 @@ namespace DevTools.Models
         public required string Id { get; set; }
         public required string Name { get; set; }
         public required string Type { get; set; }
+        public required string ResourceGroup { get; set; }
         public string? Kind { get; set; }
         public Sku? Sku { get; set; }
     }

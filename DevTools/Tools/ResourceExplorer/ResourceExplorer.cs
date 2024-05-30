@@ -89,7 +89,8 @@ public class ResourceExplorer
     {
         var resource1 = await FindResource();
 
-        if(resource1 is null) {
+        if (resource1 is null)
+        {
             return;
         }
 
@@ -97,43 +98,73 @@ public class ResourceExplorer
 
         var resource2 = await FindResource(resource1?["type"]?.ToString());
 
-        if(resource2 is null) {
+        if (resource2 is null)
+        {
             return;
         }
 
         var flattenedCompareTo = FlattenJson(resource1!);
         var flattenedResourceData = FlattenJson(resource2);
 
-        var diffTable = new Table();
-        diffTable.AddColumn("JsonPath");
-        diffTable.AddColumn("First");
-        diffTable.AddColumn("Second");
+        var showOnlyDiffs = true;
 
-        var diffStyle = new Style(decoration: Decoration.Bold, foreground: Color.Red);
-
-        foreach (var key in flattenedCompareTo.Keys)
+        while (true)
         {
-            var firstValue = flattenedCompareTo[key];
-            var secondValue = flattenedResourceData.ContainsKey(key) ? flattenedResourceData[key] : "N/A";
-            if (firstValue != secondValue)
+            AddResourceContext(TreeContext(), resource1!).RenderHeader();
+
+            var diffTable = new Table();
+
+            diffTable.AddColumn("JsonPath");
+            diffTable.AddColumn("First");
+            diffTable.AddColumn("Second");
+
+            var diffStyle = new Style(decoration: Decoration.Bold, foreground: Color.Red);
+
+            foreach (var key in flattenedCompareTo.Keys)
             {
-                diffTable.AddRow(new Markup(key.EscapeMarkup(), diffStyle), new Markup(firstValue.EscapeMarkup(), diffStyle), new Markup(secondValue.EscapeMarkup(), diffStyle));
+                var firstValue = flattenedCompareTo[key];
+                var secondValue = flattenedResourceData.ContainsKey(key) ? flattenedResourceData[key] : "N/A";
+
+                if (firstValue != secondValue)
+                {
+                    diffTable.AddRow(new Markup(key.EscapeMarkup(), diffStyle), new Markup(firstValue.EscapeMarkup(), diffStyle), new Markup(secondValue.EscapeMarkup(), diffStyle));
+                }
+                else if (showOnlyDiffs == false)
+                {
+                    diffTable.AddRow(key.EscapeMarkup(), firstValue.EscapeMarkup(), secondValue.EscapeMarkup());
+                }
             }
-            else
+
+
+            diffTable.Collapse();
+
+
+            AnsiConsole.Write(diffTable);
+
+            AnsiConsole.MarkupLine("[bold darkorange]Press w to show all rows/hide equal rows[/]");
+            AnsiConsole.MarkupLine("[bold darkorange]Press q to go back[/]");
+            var keyPressed = await AnsiConsole.Console.Input.ReadKeyAsync(true, CancellationToken.None);
+
+            if (keyPressed.Value.Key == ConsoleKey.W)
             {
-                diffTable.AddRow(key.EscapeMarkup(), firstValue.EscapeMarkup(), secondValue.EscapeMarkup());
+                showOnlyDiffs = !showOnlyDiffs;
+                continue;
             }
+
+            if (keyPressed.Value.Key == ConsoleKey.Q)
+            {
+                return;
+            }
+
         }
 
-        AnsiConsole.Write(diffTable);
 
-        AnsiConsole.MarkupLine("[bold darkorange]Press any key to continue[/]");
-        await AnsiConsole.Console.Input.ReadKeyAsync(true, CancellationToken.None);
 
     }
 
-    private async Task<JsonObject?> FindResource(string? resourceType = null) {
-        
+    private async Task<JsonObject?> FindResource(string? resourceType = null)
+    {
+
         var searchString = AnsiConsole.Ask<string>("[bold yellow]Search, q to go back [/]");
 
         if (searchString == "q")

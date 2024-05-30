@@ -1,5 +1,5 @@
 ﻿using System.Text.Json;
-using Azure.ResourceManager.Resources;
+using System.Text.Json.Nodes;
 using DevTools.Models;
 using DevTools.Services.Azure;
 using Spectre.Console;
@@ -19,7 +19,7 @@ public class ResourceExplorer
 
     public async Task Run()
     {
-        var explorerTools = new List<string> { "Go back", "Explore resource groups", "Search for resources" };
+        var explorerTools = new List<string> { "Go back", "Compare Resources", "Explore resource groups", "Search for resources" };
         while (true)
         {
             TreeContext().RenderHeader();
@@ -32,6 +32,9 @@ public class ResourceExplorer
                     return;
                 case "Explore resource groups":
                     await ExploreResourceGroups();
+                    break;
+                case "Compare Resources":
+                    await CompareResources();
                     break;
                 case "Search for resources":
                     await SearchForResources();
@@ -46,35 +49,14 @@ public class ResourceExplorer
     {
         while (true)
         {
-            var searchString = AnsiConsole.Ask<string>("[bold yellow]Enter a search term. Write Quit to go back: [/]");
+            var resourceData = await FindResource();
 
-            if (searchString == "Quit")
+            if (resourceData is null)
             {
                 return;
             }
 
-            var resources = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-                .StartAsync<List<ResourcesQueryResult>>("Searching", (_) => _resourceManagerService.GetResourcesInSubscription(searchString));
-
-            var choices = resources.Select(r => $"{r.Name} - {r.Type} - {r.ResourceGroup}").Prepend(GoBack);
-
-            var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .Title("Select a resource")
-                .EnableSearch()
-                .PageSize(10)
-                .AddChoices(choices));
-
-            if (choice == GoBack)
-            {
-                return;
-            }
-
-            var resource = resources.First(r => $"{r.Name} - {r.Type} - {r.ResourceGroup}" == choice);
-
-            var resourceData = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-                .StartAsync<GenericResourceData>($"Retrieving data for {resource.Name}", (_) => _resourceManagerService.GetResourceDetails(resource.Id));
-
-            var jsonText = new JsonText(JsonSerializer.Serialize(resourceData, new JsonSerializerOptions { WriteIndented = true }));
+            var jsonText = new JsonText(JsonSerializer.Serialize(resourceData, Defaults.JsonSerializerOptions));
 
             var panel = new Panel(jsonText)
             {
@@ -86,7 +68,7 @@ public class ResourceExplorer
 
             var nextStep = AnsiConsole.Prompt(new SelectionPrompt<string>()
                 .Title("What would you like to do next?")
-                .AddChoices(["Go back", "Make a new search", "Compare with another resource"]));
+                .AddChoices(["Go back", "Make a new search"]));
 
             if (nextStep == "Go back")
             {
@@ -98,57 +80,98 @@ public class ResourceExplorer
                 continue;
             }
 
-            if (nextStep == "Compare with another resource")
-            {
-                await CompareResources(resourceData);
-            }
-
-
         }
 
 
     }
 
-    private async Task CompareResources(GenericResourceData compareTo)
+    private async Task CompareResources()
     {
-        AddResourceContext(TreeContext(), compareTo).RenderHeader();
-        var searchString = AnsiConsole.Ask<string>("[bold yellow]Find a resource to compare to. Write Quit to go back: [/]");
-        if (searchString == "Quit")
-        {
+        var resource1 = await FindResource();
+
+        if(resource1 is null) {
             return;
         }
-        var resources = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-            .StartAsync($"Retrieving data for {searchString}", (_) => _resourceManagerService.GetResourcesInSubscription(searchString, compareTo.ResourceType));
 
-        var choices = resources.Select(r => $"{r.Name} - {r.ResourceGroup}").Prepend(GoBack);
+        AddResourceContext(TreeContext(), resource1).RenderHeader();
+
+        var resource2 = await FindResource(resource1?["type"]?.ToString());
+
+        if(resource2 is null) {
+            return;
+        }
+
+        var flattenedCompareTo = FlattenJson(resource1!);
+        var flattenedResourceData = FlattenJson(resource2);
+
+        var diffTable = new Table();
+        diffTable.AddColumn("JsonPath");
+        diffTable.AddColumn("First");
+        diffTable.AddColumn("Second");
+
+        var diffStyle = new Style(decoration: Decoration.Bold, foreground: Color.Red);
+
+        foreach (var key in flattenedCompareTo.Keys)
+        {
+            var firstValue = flattenedCompareTo[key];
+            var secondValue = flattenedResourceData.ContainsKey(key) ? flattenedResourceData[key] : "N/A";
+            if (firstValue != secondValue)
+            {
+                diffTable.AddRow(new Markup(key.EscapeMarkup(), diffStyle), new Markup(firstValue.EscapeMarkup(), diffStyle), new Markup(secondValue.EscapeMarkup(), diffStyle));
+            }
+            else
+            {
+                diffTable.AddRow(key.EscapeMarkup(), firstValue.EscapeMarkup(), secondValue.EscapeMarkup());
+            }
+        }
+
+        AnsiConsole.Write(diffTable);
+
+        AnsiConsole.MarkupLine("[bold darkorange]Press any key to continue[/]");
+        await AnsiConsole.Console.Input.ReadKeyAsync(true, CancellationToken.None);
+
+    }
+
+    private async Task<JsonObject?> FindResource(string? resourceType = null) {
+        
+        var searchString = AnsiConsole.Ask<string>("[bold yellow]Search, q to go back [/]");
+
+        if (searchString == "q")
+        {
+            return null;
+        }
+
+        var resources = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
+            .StartAsync($"Retrieving data for {searchString}", (_) => resourceType is null ?
+                _resourceManagerService.GetSourcesInTenant(searchString) :
+                _resourceManagerService.GetSourcesInTenant(searchString, resourceType));
+
+        var choices = resources.Select(r => $"{r.Name} - {r.Type} - {r.ResourceGroup}").Prepend(GoBack);
 
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Select a resource")
             .EnableSearch()
-            .PageSize(10)
+            .PageSize(15)
             .AddChoices(choices));
 
         if (choice == GoBack)
         {
-            return;
+            return null;
         }
 
-        var resource = resources.First(r => $"{r.Name} - {r.ResourceGroup}" == choice);
-
+        var resource = resources.First(r => $"{r.Name} - {r.Type} - {r.ResourceGroup}" == choice);
         var resourceData = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-            .StartAsync<GenericResourceData>($"Retrieving data for {resource.Name}", (_) => _resourceManagerService.GetResourceDetails(resource.Id));
+            .StartAsync<JsonObject>($"Retrieving data for {resource.Name}", (_) => _resourceManagerService.GetResourceDetails(resource.Id));
 
-        var jsonText = new JsonText(JsonSerializer.Serialize(resourceData, new JsonSerializerOptions { WriteIndented = true }));
-
+        return resourceData;
 
     }
 
-    private Tree AddResourceContext(Tree tree, GenericResourceData data)
+    private Tree AddResourceContext(Tree tree, JsonObject data)
     {
         var resourceNode = tree.AddNode("[bold yellow]Compare resources[/]");
 
         var grid = new Grid();
-        grid.AddColumn(new GridColumn().NoWrap());
         grid.AddColumn(new GridColumn().NoWrap());
         grid.AddColumn(new GridColumn().NoWrap());
 
@@ -162,8 +185,8 @@ public class ResourceExplorer
 
         IRenderable[] values =
         [
-            new Text(data.Name, ValueStyle),
-            new Text(data.ResourceType, ValueStyle),
+            new Text(data["name"]!.ToString(), ValueStyle),
+            new Text(data["type"]!.ToString(), ValueStyle),
 
         ];
 
@@ -214,6 +237,32 @@ public class ResourceExplorer
         AnsiConsole.MarkupLine("[bold darkorange]Press any key to continue[/]");
         await AnsiConsole.Console.Input.ReadKeyAsync(true, CancellationToken.None);
         AnsiConsole.Clear();
+    }
+
+
+    private Dictionary<string, string> FlattenJson(JsonObject json)
+    {
+        var flattenedJson = new Dictionary<string, string>();
+        FlattenJsonRecursive(json, "", flattenedJson);
+        return flattenedJson;
+    }
+
+    private static void FlattenJsonRecursive(JsonObject json, string prefix, Dictionary<string, string> flattenedJson)
+    {
+        foreach (var property in json)
+        {
+            var propertyName = property.Key;
+            var propertyValue = property.Value;
+
+            if (propertyValue is JsonObject nestedJson)
+            {
+                FlattenJsonRecursive(nestedJson, $"{prefix}{propertyName}.", flattenedJson);
+            }
+            else
+            {
+                flattenedJson.Add($"{prefix}{propertyName}", propertyValue?.ToString() ?? "null");
+            }
+        }
     }
 
 }

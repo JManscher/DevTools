@@ -57,10 +57,11 @@ while (true)
         AnsiConsole.Markup($"[bold red]Failed to retrieve token for {SelectedTenant?.TenantId}[/]");
         AnsiConsole.Markup($"""[bold red]Please run "az login --tenant {SelectedTenant?.TenantId} [/]""");
         AnsiConsole.WriteException(ce);
-        return;
+        break;
     }
     catch (Exception e)
     {
         AnsiConsole.WriteException(e);
+        break;
     }
 }

@@ -6,7 +6,8 @@ public static class Defaults
 {
     public static JsonSerializerOptions JsonSerializerOptions => new JsonSerializerOptions
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
     };
 
 }

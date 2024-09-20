@@ -52,12 +52,10 @@ while (true)
                 break;
         }
     }
-    catch (CredentialUnavailableException ce)
+    catch (CredentialUnavailableException)
     {
-        AnsiConsole.Markup($"[bold red]Failed to retrieve token for {SelectedTenant?.TenantId}[/]");
-        AnsiConsole.Markup($"""[bold red]Please run "az login --tenant {SelectedTenant?.TenantId} [/]""");
-        AnsiConsole.WriteException(ce);
-        break;
+        if(SelectedTenant is not null && SelectedTenant.TenantId is not null)
+            await AzureCliService.Login(SelectedTenant.TenantId.ToString()!);
     }
     catch (Exception e)
     {

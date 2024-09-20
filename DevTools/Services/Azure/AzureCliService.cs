@@ -8,7 +8,12 @@ public static class AzureCliService
 {
     private static string? _azureCliPath;
 
-    private static async Task Login()
+    public static async Task Login(string tenantId)
+    {
+        await RunAzureCliCommand($"login --tenant {tenantId}");
+    }
+
+    public static async Task Login()
     {
         await RunAzureCliCommand("login");
     }

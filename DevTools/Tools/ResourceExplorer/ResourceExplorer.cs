@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
-using DevTools.Models;
+using Azure.Identity;
 using DevTools.Services.Azure;
 using Spectre.Console;
 using Spectre.Console.Json;
@@ -27,19 +27,19 @@ public class ResourceExplorer
             switch (AnsiConsole.Prompt(new SelectionPrompt<string>()
                 .Title("Select an option")
                 .AddChoices(explorerTools)))
-            {
-                case "Go back":
-                    return;
-                case "Explore resource groups":
-                    await ExploreResourceGroups();
-                    break;
-                case "Compare Resources":
-                    await CompareResources();
-                    break;
-                case "Search for resources":
-                    await SearchForResources();
-                    break;
-            }
+                {
+                    case "Go back":
+                        return;
+                    case "Explore resource groups":
+                        await ExploreResourceGroups();
+                        break;
+                    case "Compare Resources":
+                        await CompareResources();
+                        break;
+                    case "Search for resources":
+                        await SearchForResources();
+                        break;
+                }
 
         }
 
@@ -235,8 +235,9 @@ public class ResourceExplorer
 
     private async Task ExploreResourceGroups()
     {
+
         var resourceGroups = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-                .StartAsync<List<ResourceGroupQueryResult>>($"Retrieving resource groups from {SelectedSubscription?.DisplayName}", (_) => _resourceManagerService.GetResourceGroups());
+                .StartAsync($"Retrieving resource groups from {SelectedSubscription?.DisplayName}", (_) => _resourceManagerService.GetResourceGroups());
 
         var choices = resourceGroups.Select(rg => rg.Name).Prepend(GoBack);
         var choice = AnsiConsole.Prompt(new SelectionPrompt<string>()
@@ -252,7 +253,7 @@ public class ResourceExplorer
 
         var resourceGroup = resourceGroups.First(rg => rg.Name == choice);
         var resources = await AnsiConsole.Status().Spinner(Spinner.Known.Default)
-            .StartAsync<List<ResourcesQueryResult>>($"Retrieving resources from {resourceGroup.Name}", (_) => _resourceManagerService.GetResourcesInResourceGroup(resourceGroup.Name));
+            .StartAsync($"Retrieving resources from {resourceGroup.Name}", (_) => _resourceManagerService.GetResourcesInResourceGroup(resourceGroup.Name));
         var table = new Table();
         table.AddColumn("Name");
         table.AddColumn("Type");
@@ -261,7 +262,7 @@ public class ResourceExplorer
 
         foreach (var resource in resources)
         {
-            table.AddRow(resource.Name, resource.Type, resource.Kind ?? "N/A", resource.Sku?.ToString() ?? "N/A");
+            table.AddRow(Markup.Escape(resource.Name), resource.Type, string.IsNullOrEmpty(resource.Kind) ? "N/A" : resource.Kind, resource.Sku?.ToString() ?? "N/A");
         }
 
         AnsiConsole.Write(table);

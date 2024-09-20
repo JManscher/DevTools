@@ -51,7 +51,7 @@ while (true)
                 await new ResourceExplorer().Run();
                 break;
         }
-    }
+    } 
     catch (CredentialUnavailableException)
     {
         if(SelectedTenant is not null && SelectedTenant.TenantId is not null)

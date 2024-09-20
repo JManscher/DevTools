@@ -73,7 +73,7 @@ public class AzureResourceManagerService
             $"""
             resources
             | where type contains '{resourceType}'
-            | where name contains '{searchTerm}' or resourceGroup contains '{searchTerm}'
+            | where name contains '{searchTerm}' or resourceGroup contains '{searchTerm} or type contains '{searchTerm}'
             """
         ));
         return await resources.Value.Data.ToObjectAsync<List<ResourcesQueryResult>>(new JsonObjectSerializer(Defaults.JsonSerializerOptions),

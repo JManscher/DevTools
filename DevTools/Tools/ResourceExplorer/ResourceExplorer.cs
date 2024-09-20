@@ -19,7 +19,7 @@ public class ResourceExplorer
 
     public async Task Run()
     {
-        var explorerTools = new List<string> { "Go back", "Compare Resources", "Explore resource groups", "Search for resources" };
+        var explorerTools = new List<string> { "Go back", "Explore resource groups", "Search for resources", "Compare Resources" };
         while (true)
         {
             TreeContext().RenderHeader();

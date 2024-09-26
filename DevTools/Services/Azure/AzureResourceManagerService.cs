@@ -66,14 +66,14 @@ public class AzureResourceManagerService
             CancellationToken.None) ?? [];
     }
 
-        public async Task<List<ResourcesQueryResult>> GetSourcesInTenant(string searchTerm, string resourceType)
+    public async Task<List<ResourcesQueryResult>> GetSourcesInTenant(string searchTerm, string resourceType)
     {
         var tenantResource = _client.GetTenants().First(t => t.Data.TenantId == SelectedTenant?.TenantId);
         var resources = await tenantResource.GetResourcesAsync(new ResourceQueryContent(
             $"""
             resources
             | where type contains '{resourceType}'
-            | where name contains '{searchTerm}' or resourceGroup contains '{searchTerm} or type contains '{searchTerm}'
+            | where name contains '{searchTerm}' or resourceGroup contains '{searchTerm}' or type contains '{searchTerm}'
             """
         ));
         return await resources.Value.Data.ToObjectAsync<List<ResourcesQueryResult>>(new JsonObjectSerializer(Defaults.JsonSerializerOptions),
@@ -112,11 +112,11 @@ public class AzureResourceManagerService
 
     public async Task<JsonObject> GetResourceDetails(string resourceId)
     {
-        
+
         var resource = _client.GetGenericResource(new ResourceIdentifier(resourceId));
 
         var resourceContent = await resource.GetAsync();
-        
+
         var stream = resourceContent.GetRawResponse().Content.ToStream();
         var json = await JsonSerializer.DeserializeAsync<JsonObject>(stream, Defaults.JsonSerializerOptions);
         return json ?? throw new InvalidOperationException("Resource not found");

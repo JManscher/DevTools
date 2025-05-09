@@ -4,10 +4,6 @@ namespace DevTools;
 
 public static class Defaults
 {
-    public static JsonSerializerOptions JsonSerializerOptions => new JsonSerializerOptions
-    {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
-    };
-
+    public static JsonSerializerOptions JsonSerializerOptions =>
+        new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 }

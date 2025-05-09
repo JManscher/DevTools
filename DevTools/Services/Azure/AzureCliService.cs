@@ -23,19 +23,24 @@ public static class AzureCliService
         try
         {
             var result = await RunAzureCliCommand("account show");
-            var subscription = JsonSerializer.Deserialize<AzCliSubscription>(result, Defaults.JsonSerializerOptions) ?? throw new InvalidOperationException("No subscription found");
+            var subscription =
+                JsonSerializer.Deserialize<AzCliSubscription>(
+                    result,
+                    Defaults.JsonSerializerOptions
+                ) ?? throw new InvalidOperationException("No subscription found");
 
             SelectedSubscription = new SubscriptionSimplified(subscription.Name, subscription.Id);
-            SelectedTenant = new TenantSimplified(subscription.TenantDisplayName, subscription.TenantId);
-
+            SelectedTenant = new TenantSimplified(
+                subscription.TenantDisplayName,
+                subscription.TenantId
+            );
         }
-        catch (InvalidOperationException e) when (e.Message == "Azure CLI command failed with exit code 1")
+        catch (InvalidOperationException e)
+            when (e.Message == "Azure CLI command failed with exit code 1")
         {
             await Login();
             await InitializeContext();
         }
-
-
     }
 
     public static async Task SetSubscription(string subscriptionId)
@@ -45,29 +50,27 @@ public static class AzureCliService
 
     private static async Task<string> RunAzureCliCommand(string command)
     {
-
-        if (_azureCliPath is null)
-        {
-            _azureCliPath = GetAzureCliPath();
-        }
+        _azureCliPath ??= GetAzureCliPath();
 
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = _azureCliPath,
-                Arguments = command,
+                Arguments = $"{command} --output json",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-            }
+            },
         };
         process.Start();
         var result = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
         if (process.ExitCode != 0)
         {
-            throw new InvalidOperationException($"Azure CLI command failed with exit code {process.ExitCode}");
+            throw new InvalidOperationException(
+                $"Azure CLI command failed with exit code {process.ExitCode}"
+            );
         }
 
         return result;
@@ -76,9 +79,9 @@ public static class AzureCliService
     private static string GetAzureCliPath()
     {
         string az = "az.cmd";
-        var result = (Environment.GetEnvironmentVariable("PATH")
-                ?.Split(';') ?? [])
-            .FirstOrDefault(s => File.Exists(Path.Combine(s, az)));
+        var result = (Environment.GetEnvironmentVariable("PATH")?.Split(';') ?? []).FirstOrDefault(
+            s => File.Exists(Path.Combine(s, az))
+        );
 
         if (result is null)
         {
@@ -87,5 +90,4 @@ public static class AzureCliService
 
         return $"{result}\\{az}";
     }
-
 }
